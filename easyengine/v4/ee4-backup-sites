@@ -55,7 +55,8 @@ main() {
 		nice -n 19 gpg --encrypt --recipient $gpg_pub_email $tmp/$dbfilename.gz
 		## Copy to S3
 		aws s3 cp $s3options $tmp/$dbfilename.gz.gpg s3://$bucket/$server_name/$db_backup_folder/$domain/
-		aws s3 ls s3://$bucket/$server_name/$db_backup_folder/$domain/$dbfilename.gz.gpg
+		# aws s3 ls s3://$bucket/$server_name/$db_backup_folder/$domain/$dbfilename.gz.gpg
+		submitStatus "$bucket" "$server_name/$db_backup_folder/$domain/$dbfilename.gz.gpg" "${domain} [ :database: ]: "
 		## Cleanup
 		rm $tmp/$dbfilename*
 
@@ -67,7 +68,8 @@ main() {
 		nice -n 19 gpg --encrypt --recipient $gpg_pub_email $tmp/$filename
 		## Upload to S3
 		aws s3 cp $s3options $tmp/$filename.gpg s3://$bucket/$server_name/$htdoc_backup_folder/$domain/
-		aws s3 ls s3://$bucket/$server_name/$htdoc_backup_folder/$domain/$filename.gpg
+		# aws s3 ls s3://$bucket/$server_name/$htdoc_backup_folder/$domain/$filename.gpg
+		submitStatus "$bucket" "$server_name/$htdoc_backup_folder/$domain/$filename.gpg" "${domain} [ 📁 ]: "
 		## Cleanup
 		rm $tmp/$filename*
 
@@ -98,6 +100,18 @@ main() {
 	rm $tmp/$rlfilename
 
 
+}
+
+function submitStatus() {
+fileHead=$(aws s3api head-object --bucket $1 --key $2)
+    if [ -z "$fileHead" ]; # fileHead is null
+        then
+            local status='❌'
+        else
+            local status='✔'
+    fi
+    echo $3$status
+    curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"${status} $3\"}" $slackWebHook
 }
 
 main "$@"
